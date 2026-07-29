@@ -47,10 +47,12 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 300 * 1024 * 1024 }, // Giới hạn 300MB
     fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|webp|mp3|mp4/;
+        // Mở rộng thêm các định dạng phổ biến: png, pdf, docx, xlsx,...
+        const allowedTypes = /jpeg|jpg|png|webp|pdf|docx|xlsx|mp3|mp4/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (extname && mimetype) {
+        const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/pdf' || file.mimetype.includes('document') || file.mimetype.includes('sheet');
+        
+        if (extname) {
             return cb(null, true);
         }
         cb(new Error('Định dạng không được hỗ trợ!'));
@@ -69,7 +71,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     try {
         const filePath = req.file.path;
         
-        // Sửa lỗi tên tiếng Việt bị lỗi font (ÄK 91...)
+        // Sửa lỗi tên tiếng Việt bị lỗi font
         let originalName = req.file.originalname;
         try {
             originalName = Buffer.from(originalName, 'latin1').toString('utf8');
@@ -125,6 +127,7 @@ app.get('/files', async (req, res) => {
             if (mime.includes('image/')) type = 'jpg';
             else if (mime.includes('video/mp4')) type = 'mp4';
             else if (mime.includes('audio/mpeg')) type = 'mp3';
+            else if (mime.includes('pdf') || mime.includes('document')) type = 'pdf';
 
             return {
                 id: file.id,
