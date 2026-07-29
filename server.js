@@ -14,12 +14,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Cấu hình Multer lưu file tạm vào bộ nhớ RAM
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Xác thực Google Drive API bằng biến môi trường (Render Environment Variables)
+// Xác thực Google Drive API bằng biến môi trường GOOGLE_CREDENTIALS (chứa toàn bộ file JSON)
+let credentials;
+try {
+    credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+} catch (error) {
+    console.error("Lỗi: Biến môi trường GOOGLE_CREDENTIALS chưa được thiết lập hoặc không đúng định dạng JSON!");
+}
+
 const auth = new google.auth.GoogleAuth({
-    credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY ? process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-    },
+    credentials,
     scopes: ['https://www.googleapis.com/auth/drive'],
 });
 
