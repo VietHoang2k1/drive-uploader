@@ -7,8 +7,8 @@
     <!-- Sử dụng Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen py-8 px-4">
-    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100">
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen py-8 px-4 flex flex-col justify-between">
+    <div class="max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100 mb-6">
         
         <!-- Tiêu đề -->
         <h1 class="text-3xl font-extrabold text-slate-800 mb-6 text-center tracking-tight">
@@ -49,14 +49,8 @@
         <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
             <h2 class="text-xl font-bold text-slate-700">📂 Kho Tệp Trên Drive</h2>
             
-            <!-- Nhóm nút chức năng hàng loạt -->
+            <!-- Nhóm nút chức năng hàng loạt (Đã lược bỏ nút tải zip) -->
             <div class="flex flex-wrap gap-2">
-                <button onclick="downloadSelectedZip()" class="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-emerald-700 shadow transition active:scale-95">
-                    📥 Tải các file đã chọn
-                </button>
-                <button onclick="downloadAllZip()" class="bg-teal-600 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-teal-700 shadow transition active:scale-95">
-                    📦 Tải tất cả
-                </button>
                 <button onclick="deleteSelectedFiles()" class="bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-rose-600 shadow transition active:scale-95">
                     🗑️ Xóa đã chọn
                 </button>
@@ -82,6 +76,11 @@
             </table>
         </div>
     </div>
+
+    <!-- FOOTER LƯU Ý -->
+    <footer class="text-center text-slate-500 text-xs md:text-sm pb-4">
+        📌 <span class="font-semibold text-slate-600">Lưu ý:</span> Đây là bản free, muốn tải nhiều file liên hệ với admin.
+    </footer>
 
     <script>
         let allFilesCache = []; // Lưu trữ danh sách file toàn cục
@@ -218,65 +217,6 @@
 
             loadFiles();
             loadStorageQuota();
-        }
-
-        // Tải các file đã chọn (Mở liên kết tải trực tiếp)
-        function downloadSelectedZip() {
-            const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
-            if (selectedCheckboxes.length === 0) {
-                alert('Vui lòng chọn ít nhất một file để tải.');
-                return;
-            }
-
-            const statusText = document.getElementById('uploadStatus');
-            statusText.innerText = `🚀 Đang mở tải xuống ${selectedCheckboxes.length} file...`;
-            statusText.className = "text-sm font-semibold text-blue-600 mt-2";
-
-            selectedCheckboxes.forEach((cb, index) => {
-                const downloadUrl = `https://drive.google.com/uc?export=download&id=${cb.value}`;
-                setTimeout(() => {
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.target = '_blank';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                }, index * 300);
-            });
-
-            setTimeout(() => {
-                statusText.innerText = '✨ Đã kích hoạt tải xuống thành công!';
-                statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
-            }, selectedCheckboxes.length * 300);
-        }
-
-        // Tải tất cả các file (Mở liên kết tải trực tiếp)
-        function downloadAllZip() {
-            if (allFilesCache.length === 0) {
-                alert('Kho Drive đang trống!');
-                return;
-            }
-
-            const statusText = document.getElementById('uploadStatus');
-            statusText.innerText = `🚀 Đang mở tải xuống toàn bộ ${allFilesCache.length} file...`;
-            statusText.className = "text-sm font-semibold text-blue-600 mt-2";
-
-            allFilesCache.forEach((file, index) => {
-                const downloadUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
-                setTimeout(() => {
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.target = '_blank';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                }, index * 300);
-            });
-
-            setTimeout(() => {
-                statusText.innerText = '✨ Đã kích hoạt tải xuống tất cả thành công!';
-                statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
-            }, allFilesCache.length * 300);
         }
 
         loadStorageQuota();
