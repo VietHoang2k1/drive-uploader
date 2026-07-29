@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý và Tải file Google Drive</title>
+    <!-- Sử dụng thư viện Tailwind CSS để giao diện đẹp và hiện đại -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Quản lý File trên Google Drive</h1>
+
+        <!-- KHU VỰC UPLOAD FILE (Giữ nguyên giao diện cũ của bạn) -->
+        <div class="mb-8 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <input type="file" id="fileInput" class="mb-4">
+            <br>
+            <button onclick="uploadFile()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Bắt đầu tải lên</button>
+            <p id="uploadStatus" class="mt-2 text-sm text-gray-600 font-semibold"></p>
+        </div>
+
+        <hr class="mb-6">
+
+        <!-- KHU VỰC DANH SÁCH FILE VÀ CÁC NÚT THAO TÁC NHIỀU FILE -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-gray-700">Kho Tên Trên Google Drive</h2>
+            <div class="space-x-2">
+                <button onclick="downloadSelectedZip()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">Tải các file đã chọn (.zip)</button>
+                <button onclick="deleteSelectedFiles()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition">Xóa các file đã chọn</button>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-700 uppercase text-sm">
+                        <th class="p-3 text-center"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                        <th class="p-3">Tên tệp</th>
+                        <th class="p-3 text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="fileTableBody" class="text-gray-600 text-sm divide-y divide-gray-200">
+                    <!-- Danh sách file sẽ được load tự động vào đây -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Tải danh sách file khi vừa mở trang
+        async function loadFiles() {
+            try {
+                const res = await fetch('/files');
+                const files = await res.json();
+                const tbody = document.getElementById('fileTableBody');
+                tbody.innerHTML = '';
+
+                if (files.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-gray-500">Chưa có tệp nào trên Drive.</td></tr>`;
+                    return;
+                }
+
+                files.forEach(file => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50';
+                    tr.innerHTML = `
+                        <td class="p-3 text-center"><input type="checkbox" class="file-checkbox" value="${file.id}"></td>
+                        <td class="p-3 font-medium text-gray-800">${file.name}</td>
+                        <td class="p-3 text-center space-x-2">
+                            <a href="https://drive.google.com/uc?export=download&id=${file.id}" class="text-blue-600 hover:underline font-medium">Tải xuống</a>
+                            <button onclick="deleteSingleFile('${file.id}')" class="text-red-600 hover:underline font-medium">Xóa</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Lỗi khi load tệp:", err);
+            }
+        }
+
+        // Chọn hoặc bỏ chọn tất cả checkbox
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
+
+        // Tải lên file đơn lẻ
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const statusText = document.getElementById('uploadStatus');
+            if (fileInput.files.length === 0) {
+                alert('Vui lòng chọn một file trước!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            statusText.innerText = 'Đang tải lên Google Drive...';
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    statusText.innerText = 'Tải lên thành công!';
+                    fileInput.value = '';
+                    loadFiles(); // Tải lại danh sách file mới
+                } else {
+                    statusText.innerText = 'Lỗi: ' + data.error;
+                }
+            } catch (err) {
+                statusText.innerText = 'Lỗi kết nối đến server!';
+            }
+        }
+
+        // Xóa một file đơn lẻ
+        async function deleteSingleFile(fileId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn file này trên Google Drive không?')) return;
+
+            try {
+                const res = await fetch(`/files/${fileId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadFiles(); // Cập nhật lại danh sách sau khi xóa
+                } else {
+                    alert('Xóa file thất bại.');
+                }
+            } catch (err) {
+                alert('Lỗi kết nối server.');
+            }
+        }
+
+        // Xóa nhiều file đã chọn
+        async function deleteSelectedFiles() {
+            const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Vui lòng chọn ít nhất một file để xóa.');
+                return;
+            }
+
+            if (!confirm(`Bạn có chắc muốn xóa vĩnh viễn ${selectedCheckboxes.length} file đã chọn trên Google Drive?`)) return;
+
+            for (const cb of selectedCheckboxes) {
+                await fetch(`/files/${cb.value}`, { method: 'DELETE' });
+            }
+
+            loadFiles(); // Tải lại danh sách sau khi xóa xong
+        }
+
+        // Tải các file đã chọn dạng file ZIP
+        async function downloadSelectedZip() {
+            const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Vui lòng chọn ít nhất một file để tải.');
+                return;
+            }
+
+            const fileIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            // Gửi request lấy file zip về
+            const res = await fetch('/download-zip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileIds })
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'files-download.zip';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert('Không thể tạo file zip để tải.');
+            }
+        }
+
+        // Chạy hàm load danh sách file ngay khi mở trang
+        loadFiles();
+    </script>
+</body>
+</html>
