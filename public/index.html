@@ -55,7 +55,7 @@
                     📥 Tải các file đã chọn
                 </button>
                 <button onclick="downloadAllZip()" class="bg-teal-600 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-teal-700 shadow transition active:scale-95">
-                    📦 Tải tất cả (.zip)
+                    📦 Tải tất cả
                 </button>
                 <button onclick="deleteSelectedFiles()" class="bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-rose-600 shadow transition active:scale-95">
                     🗑️ Xóa đã chọn
@@ -84,7 +84,7 @@
     </div>
 
     <script>
-        let allFilesCache = []; // Lưu trữ danh sách file toàn cục để dùng cho chức năng tải/xóa tất cả
+        let allFilesCache = []; // Lưu trữ danh sách file toàn cục
 
         async function loadStorageQuota() {
             try {
@@ -106,7 +106,7 @@
             try {
                 const res = await fetch('/files');
                 const files = await res.json();
-                allFilesCache = files; // Lưu lại danh sách
+                allFilesCache = files; 
                 const tbody = document.getElementById('fileTableBody');
                 tbody.innerHTML = '';
 
@@ -119,7 +119,7 @@
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition';
                     tr.innerHTML = `
-                        <td class="p-3 text-center"><input type="checkbox" class="file-checkbox" value="${file.id}" class="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"></td>
+                        <td class="p-3 text-center"><input type="checkbox" class="file-checkbox" value="${file.id}"></td>
                         <td class="p-3 font-medium text-slate-800 break-all">${file.name}</td>
                         <td class="p-3 text-center space-x-3">
                             <a href="https://drive.google.com/uc?export=download&id=${file.id}" class="text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg transition">Tải</a>
@@ -204,14 +204,13 @@
             loadStorageQuota();
         }
 
-        // Xóa tất cả các file có trên Drive
         async function deleteAllFiles() {
             if (allFilesCache.length === 0) {
                 alert('Kho Drive đang trống!');
                 return;
             }
 
-            if (!confirm(`🔥 CẢNH BÁO: Bạn có chắc chắn muốn XÓA TẤT CẢ ${allFilesCache.length} file trên Google Drive không? Thao tác này không thể hoàn tác!`)) return;
+            if (!confirm(`🔥 CẢNH BÁO: Bạn có chắc chắn muốn XÓA TẤT CẢ ${allFilesCache.length} file trên Google Drive không?`)) return;
 
             for (const file of allFilesCache) {
                 await fetch(`/files/${file.id}`, { method: 'DELETE' });
@@ -221,53 +220,63 @@
             loadStorageQuota();
         }
 
-        // Tải các file đã chọn dạng file ZIP
-        async function downloadSelectedZip() {
+        // Tải các file đã chọn (Mở liên kết tải trực tiếp)
+        function downloadSelectedZip() {
             const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
             if (selectedCheckboxes.length === 0) {
                 alert('Vui lòng chọn ít nhất một file để tải.');
                 return;
             }
 
-            const fileIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-            await processZipDownload(fileIds, 'selected-files.zip');
+            const statusText = document.getElementById('uploadStatus');
+            statusText.innerText = `🚀 Đang mở tải xuống ${selectedCheckboxes.length} file...`;
+            statusText.className = "text-sm font-semibold text-blue-600 mt-2";
+
+            selectedCheckboxes.forEach((cb, index) => {
+                const downloadUrl = `https://drive.google.com/uc?export=download&id=${cb.value}`;
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }, index * 300);
+            });
+
+            setTimeout(() => {
+                statusText.innerText = '✨ Đã kích hoạt tải xuống thành công!';
+                statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
+            }, selectedCheckboxes.length * 300);
         }
 
-        // Tải toàn bộ tất cả file dạng file ZIP
-        async function downloadAllZip() {
+        // Tải tất cả các file (Mở liên kết tải trực tiếp)
+        function downloadAllZip() {
             if (allFilesCache.length === 0) {
                 alert('Kho Drive đang trống!');
                 return;
             }
 
-            const fileIds = allFilesCache.map(file => file.id);
-            await processZipDownload(fileIds, 'all-drive-files.zip');
-        }
+            const statusText = document.getElementById('uploadStatus');
+            statusText.innerText = `🚀 Đang mở tải xuống toàn bộ ${allFilesCache.length} file...`;
+            statusText.className = "text-sm font-semibold text-blue-600 mt-2";
 
-        // Hàm chung xử lý gọi API tải file zip
-        async function processZipDownload(fileIds, zipName) {
-            try {
-                const res = await fetch('/download-zip', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileIds })
-                });
-
-                if (res.ok) {
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
+            allFilesCache.forEach((file, index) => {
+                const downloadUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+                setTimeout(() => {
                     const a = document.createElement('a');
-                    a.href = url;
-                    a.download = zipName;
+                    a.href = downloadUrl;
+                    a.target = '_blank';
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                } else {
-                    alert('Không thể tạo file zip để tải.');
-                }
-            } catch (err) {
-                alert('Lỗi kết nối khi tải file zip.');
-            }
+                }, index * 300);
+            });
+
+            setTimeout(() => {
+                statusText.innerText = '✨ Đã kích hoạt tải xuống tất cả thành công!';
+                statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
+            }, allFilesCache.length * 300);
         }
 
         loadStorageQuota();
