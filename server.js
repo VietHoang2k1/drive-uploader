@@ -8,7 +8,6 @@ const archiver = require('archiver');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Sử dụng biến môi trường (khi đưa lên Render) hoặc giá trị mặc định khi chạy dưới máy cá nhân
 const CLIENT_ID = process.env.CLIENT_ID || '265989258511-cfl6g4epm1nae73pndhqldb0hv8hhc67.apps.googleusercontent.com';
 const CLIENT_SECRET = process.env.CLIENT_SECRET || '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'; 
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN || '1//049bkjk7_ravrCgYIARAAGAQSNwF-L9Ir8grAvaFyEq28Sh_F6CFxxMGWSqIW_7dNUI_E7aXstkcPYdIi0cZLbMWTiEPLGOy5Sik';
@@ -29,7 +28,6 @@ const drive = google.drive({
     auth: oauth2Client
 });
 
-// Thư mục lưu cache tạm trước khi đẩy lên Drive
 const uploadDir = path.join(__dirname, 'temp_uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
@@ -47,11 +45,8 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 300 * 1024 * 1024 }, // Giới hạn 300MB
     fileFilter: (req, file, cb) => {
-        // Mở rộng thêm các định dạng phổ biến: png, pdf, docx, xlsx,...
         const allowedTypes = /jpeg|jpg|png|webp|pdf|docx|xlsx|mp3|mp4/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/pdf' || file.mimetype.includes('document') || file.mimetype.includes('sheet');
-        
         if (extname) {
             return cb(null, true);
         }
@@ -62,7 +57,34 @@ const upload = multer({
 app.use(express.json());
 app.use(express.static('public'));
 
-// 1. API Upload file lên Google Drive (Đã tích hợp fix lỗi tiếng Việt)
+// 1. API Lấy dung lượng lưu trữ Google Drive
+app.get('/storage-quota', async (req, res) => {
+    try {
+        const response = await drive.about.get({
+            fields: 'storageQuota'
+        });
+        const quota = response.data.storageQuota;
+        
+        // Chuyển đổi bytes sang MB hoặc GB
+        const limitBytes = parseInt(quota.limit || 0);
+        const usageBytes = parseInt(quota.usage || 0);
+
+        const limitGB = (limitBytes / (1024 * 1024 * 1024)).toFixed(2);
+        const usageGB = (usageBytes / (1024 * 1024 * 1024)).toFixed(2);
+        const usagePercent = limitBytes > 0 ? ((usageBytes / limitBytes) * 100).toFixed(1) : 0;
+
+        res.json({
+            limit: limitGB + ' GB',
+            usage: usageGB + ' GB',
+            percent: usagePercent
+        });
+    } catch (error) {
+        console.error('Lỗi lấy dung lượng:', error);
+        res.status(500).json({ error: 'Không thể lấy thông tin dung lượng.' });
+    }
+});
+
+// 2. API Upload file lên Google Drive
 app.post('/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'Upload thất bại hoặc file không hợp lệ.' });
@@ -70,14 +92,10 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
     try {
         const filePath = req.file.path;
-        
-        // Sửa lỗi tên tiếng Việt bị lỗi font
         let originalName = req.file.originalname;
         try {
             originalName = Buffer.from(originalName, 'latin1').toString('utf8');
-        } catch (e) {
-            // Giữ nguyên nếu không cần chuyển đổi
-        }
+        } catch (e) {}
         
         const response = await drive.files.create({
             requestBody: {
@@ -92,7 +110,6 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
         const fileId = response.data.id;
 
-        // Cấp quyền chia sẻ công khai để hiển thị xem trước và tải xuống
         await drive.permissions.create({
             fileId: fileId,
             requestBody: {
@@ -101,9 +118,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
             }
         });
 
-        // Xóa file tạm trên server
         fs.unlinkSync(filePath);
-
         res.json({ message: 'Tải lên Google Drive thành công!', fileId: fileId });
     } catch (error) {
         console.error(error);
@@ -112,7 +127,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-// 2. API Lấy danh sách file từ Google Drive
+// 3. API Lấy danh sách file từ Google Drive
 app.get('/files', async (req, res) => {
     try {
         const response = await drive.files.list({
@@ -146,15 +161,11 @@ app.get('/files', async (req, res) => {
     }
 });
 
-// 3. API Xóa file trên Google Drive
+// 4. API Xóa file trên Google Drive
 app.delete('/files/:id', async (req, res) => {
     try {
         const fileId = req.params.id;
-        
-        await drive.files.delete({
-            fileId: fileId
-        });
-
+        await drive.files.delete({ fileId: fileId });
         res.json({ message: 'Đã xóa file thành công trên Google Drive!' });
     } catch (error) {
         console.error('Lỗi khi xóa file:', error);
@@ -162,7 +173,7 @@ app.delete('/files/:id', async (req, res) => {
     }
 });
 
-// 4. API Tải nhiều file dưới dạng file ZIP
+// 5. API Tải nhiều file dưới dạng file ZIP
 app.post('/download-zip', async (req, res) => {
     const { fileIds } = req.body; 
     if (!fileIds || !fileIds.length) {
@@ -177,12 +188,10 @@ app.post('/download-zip', async (req, res) => {
         try {
             const fileMeta = await drive.files.get({ fileId: fileId, fields: 'name' });
             const fileName = fileMeta.data.name;
-
             const fileStream = await drive.files.get(
                 { fileId: fileId, alt: 'media' },
                 { responseType: 'stream' }
             );
-
             archive.append(fileStream.data, { name: fileName });
         } catch (err) {
             console.error(`Không thể nén file ${fileId}:`, err);
