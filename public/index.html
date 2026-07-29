@@ -7,8 +7,8 @@
     <!-- Sử dụng Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen py-8 px-4 flex flex-col justify-between">
-    <div class="max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100 mb-6">
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen py-8 px-4">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100">
         
         <!-- Tiêu đề -->
         <h1 class="text-3xl font-extrabold text-slate-800 mb-6 text-center tracking-tight">
@@ -29,20 +29,6 @@
             </div>
         </div>
 
-        <!-- KHU VỰC ĐIỀU HƯỚNG THƯ MỤC (BREADCRUMB & QUAY LẠI) -->
-        <div class="flex items-center justify-between mb-4 bg-slate-100 p-3 rounded-xl">
-            <div class="flex items-center gap-2">
-                <button id="backButton" onclick="goToParentFolder()" class="hidden bg-white text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition shadow-sm">
-                    ⬅️ Thư mục trước
-                </button>
-                <span id="currentPathText" class="text-sm font-bold text-slate-700">📂 Thư mục gốc (Root)</span>
-            </div>
-            <!-- Nút tạo thư mục mới -->
-            <button onclick="createNewFolder()" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-600 shadow transition active:scale-95">
-                📁 Tạo thư mục mới
-            </button>
-        </div>
-
         <!-- KHU VỰC UPLOAD FILE -->
         <div class="mb-8 border-2 border-dashed border-blue-300 rounded-2xl p-6 text-center bg-blue-50/50 hover:bg-blue-50/80 transition">
             <div class="flex flex-col items-center justify-center space-y-3">
@@ -51,7 +37,7 @@
                 </svg>
                 <input type="file" id="fileInput" class="text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                 <button onclick="uploadFile()" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-blue-700 shadow-md transition active:scale-95">
-                    Bắt đầu tải lên thư mục hiện tại
+                    Bắt đầu tải lên
                 </button>
                 <p id="uploadStatus" class="text-sm font-semibold text-slate-600 min-h-[20px]"></p>
             </div>
@@ -61,9 +47,16 @@
 
         <!-- KHU VỰC THAO TÁC DANH SÁCH FILE -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
-            <h2 class="text-xl font-bold text-slate-700">📂 Danh sách Thư mục & Tệp</h2>
+            <h2 class="text-xl font-bold text-slate-700">📂 Kho Tệp Trên Drive</h2>
             
+            <!-- Nhóm nút chức năng hàng loạt -->
             <div class="flex flex-wrap gap-2">
+                <button onclick="downloadSelectedZip()" class="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-emerald-700 shadow transition active:scale-95">
+                    📥 Tải các file đã chọn
+                </button>
+                <button onclick="downloadAllZip()" class="bg-teal-600 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-teal-700 shadow transition active:scale-95">
+                    📦 Tải tất cả
+                </button>
                 <button onclick="deleteSelectedFiles()" class="bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-rose-600 shadow transition active:scale-95">
                     🗑️ Xóa đã chọn
                 </button>
@@ -73,32 +66,25 @@
             </div>
         </div>
 
-        <!-- BẢNG HIỂN THỊ FILE & THƯ MỤC -->
+        <!-- BẢNG HIỂN THỊ FILE -->
         <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider">
                         <th class="p-3 text-center w-12"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" class="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"></th>
-                        <th class="p-3">Tên</th>
+                        <th class="p-3">Tên tệp</th>
                         <th class="p-3 text-center w-36">Hành động</th>
                     </tr>
                 </thead>
                 <tbody id="fileTableBody" class="text-slate-600 text-sm divide-y divide-slate-200 bg-white">
-                    <!-- Danh sách sẽ được load tự động vào đây -->
+                    <!-- Danh sách file sẽ được load tự động vào đây -->
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- FOOTER LƯU Ý -->
-    <footer class="text-center text-slate-500 text-xs md:text-sm pb-4">
-        📌 <span class="font-semibold text-slate-600">Lưu ý:</span> Đây là bản free, muốn tải nhiều file liên hệ với admin.
-    </footer>
-
     <script>
-        let currentFolderId = 'root';
-        let folderHistory = []; // Lưu vết các thư mục đã đi qua để bấm quay lại
-        let allFilesCache = []; 
+        let allFilesCache = []; // Lưu trữ danh sách file toàn cục
 
         async function loadStorageQuota() {
             try {
@@ -116,96 +102,34 @@
             }
         }
 
-        async function loadFiles(folderId = 'root') {
+        async function loadFiles() {
             try {
-                const res = await fetch(`/files?folderId=${folderId}`);
+                const res = await fetch('/files');
                 const files = await res.json();
                 allFilesCache = files; 
                 const tbody = document.getElementById('fileTableBody');
                 tbody.innerHTML = '';
 
-                // Hiển thị nút quay lại nếu đang ở thư mục con
-                const backButton = document.getElementById('backButton');
-                if (folderHistory.length > 0) {
-                    backButton.classList.remove('hidden');
-                } else {
-                    backButton.classList.add('hidden');
-                }
-
                 if (files.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="text-center p-6 text-slate-400 italic">Thư mục này đang trống.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="3" class="text-center p-6 text-slate-400 italic">Chưa có tệp nào trên Drive.</td></tr>`;
                     return;
                 }
 
-                files.forEach(item => {
-                    const isFolder = item.mimeType === 'application/vnd.google-apps.folder';
+                files.forEach(file => {
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition';
-
-                    if (isFolder) {
-                        tr.innerHTML = `
-                            <td class="p-3 text-center">📁</td>
-                            <td class="p-3 font-bold text-blue-700 cursor-pointer flex items-center gap-2" onclick="openFolder('${item.id}', '${item.name}')">
-                                📂 ${item.name}
-                            </td>
-                            <td class="p-3 text-center">
-                                <button onclick="deleteSingleFile('${item.id}')" class="text-rose-600 hover:text-rose-800 font-medium text-xs bg-rose-50 px-2.5 py-1.5 rounded-lg transition">Xóa</button>
-                            </td>
-                        `;
-                    } else {
-                        tr.innerHTML = `
-                            <td class="p-3 text-center"><input type="checkbox" class="file-checkbox" value="${item.id}"></td>
-                            <td class="p-3 font-medium text-slate-800 break-all">📄 ${item.name}</td>
-                            <td class="p-3 text-center space-x-3">
-                                <a href="https://drive.google.com/uc?export=download&id=${item.id}" class="text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg transition">Tải</a>
-                                <button onclick="deleteSingleFile('${item.id}')" class="text-rose-600 hover:text-rose-800 font-medium text-xs bg-rose-50 px-2.5 py-1.5 rounded-lg transition">Xóa</button>
-                            </td>
-                        `;
-                    }
+                    tr.innerHTML = `
+                        <td class="p-3 text-center"><input type="checkbox" class="file-checkbox" value="${file.id}"></td>
+                        <td class="p-3 font-medium text-slate-800 break-all">${file.name}</td>
+                        <td class="p-3 text-center space-x-3">
+                            <a href="https://drive.google.com/uc?export=download&id=${file.id}" class="text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg transition">Tải</a>
+                            <button onclick="deleteSingleFile('${file.id}')" class="text-rose-600 hover:text-rose-800 font-medium text-xs bg-rose-50 px-2.5 py-1.5 rounded-lg transition">Xóa</button>
+                        </td>
+                    `;
                     tbody.appendChild(tr);
                 });
             } catch (err) {
                 console.error("Lỗi khi load tệp:", err);
-            }
-        }
-
-        // Mở thư mục con
-        function openFolder(folderId, folderName) {
-            folderHistory.push({ id: currentFolderId, name: document.getElementById('currentPathText').innerText });
-            currentFolderId = folderId;
-            document.getElementById('currentPathText').innerText = `📂 ${folderName}`;
-            loadFiles(currentFolderId);
-        }
-
-        // Quay lại thư mục trước đó
-        function goToParentFolder() {
-            if (folderHistory.length > 0) {
-                const prev = folderHistory.pop();
-                currentFolderId = prev.id;
-                document.getElementById('currentPathText').innerText = prev.name;
-                loadFiles(currentFolderId);
-            }
-        }
-
-        // Tạo thư mục mới
-        async function createNewFolder() {
-            const folderName = prompt('Nhập tên thư mục mới:');
-            if (!folderName) return;
-
-            try {
-                const res = await fetch('/folders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: folderName, parentId: currentFolderId })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    loadFiles(currentFolderId);
-                } else {
-                    alert('Lỗi: ' + data.error);
-                }
-            } catch (err) {
-                alert('Lỗi kết nối khi tạo thư mục.');
             }
         }
 
@@ -214,7 +138,6 @@
             checkboxes.forEach(cb => cb.checked = source.checked);
         }
 
-        // Upload file vào thư mục hiện tại
         async function uploadFile() {
             const fileInput = document.getElementById('fileInput');
             const statusText = document.getElementById('uploadStatus');
@@ -225,7 +148,6 @@
 
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
-            formData.append('folderId', currentFolderId);
 
             statusText.innerText = '⏳ Đang tải lên Google Drive...';
             statusText.className = "text-sm font-semibold text-blue-600 mt-2";
@@ -237,7 +159,7 @@
                     statusText.innerText = '✨ Tải lên thành công!';
                     statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
                     fileInput.value = '';
-                    loadFiles(currentFolderId);
+                    loadFiles();
                     loadStorageQuota();
                 } else {
                     statusText.innerText = '❌ Lỗi: ' + data.error;
@@ -250,15 +172,15 @@
         }
 
         async function deleteSingleFile(fileId) {
-            if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn mục này không?')) return;
+            if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn file này không?')) return;
 
             try {
                 const res = await fetch(`/files/${fileId}`, { method: 'DELETE' });
                 if (res.ok) {
-                    loadFiles(currentFolderId);
+                    loadFiles();
                     loadStorageQuota();
                 } else {
-                    alert('Xóa thất bại.');
+                    alert('Xóa file thất bại.');
                 }
             } catch (err) {
                 alert('Lỗi kết nối server.');
@@ -278,28 +200,87 @@
                 await fetch(`/files/${cb.value}`, { method: 'DELETE' });
             }
 
-            loadFiles(currentFolderId);
+            loadFiles();
             loadStorageQuota();
         }
 
         async function deleteAllFiles() {
             if (allFilesCache.length === 0) {
-                alert('Thư mục này đang trống!');
+                alert('Kho Drive đang trống!');
                 return;
             }
 
-            if (!confirm(`🔥 CẢNH BÁO: Bạn có chắc chắn muốn XÓA TẤT CẢ các mục trong thư mục này không?`)) return;
+            if (!confirm(`🔥 CẢNH BÁO: Bạn có chắc chắn muốn XÓA TẤT CẢ ${allFilesCache.length} file trên Google Drive không?`)) return;
 
-            for (const item of allFilesCache) {
-                await fetch(`/files/${item.id}`, { method: 'DELETE' });
+            for (const file of allFilesCache) {
+                await fetch(`/files/${file.id}`, { method: 'DELETE' });
             }
 
-            loadFiles(currentFolderId);
+            loadFiles();
             loadStorageQuota();
         }
 
+        // Tải các file đã chọn (Mở liên kết tải trực tiếp)
+        function downloadSelectedZip() {
+            const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Vui lòng chọn ít nhất một file để tải.');
+                return;
+            }
+
+            const statusText = document.getElementById('uploadStatus');
+            statusText.innerText = `🚀 Đang mở tải xuống ${selectedCheckboxes.length} file...`;
+            statusText.className = "text-sm font-semibold text-blue-600 mt-2";
+
+            selectedCheckboxes.forEach((cb, index) => {
+                const downloadUrl = `https://drive.google.com/uc?export=download&id=${cb.value}`;
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }, index * 300);
+            });
+
+            setTimeout(() => {
+                statusText.innerText = '✨ Đã kích hoạt tải xuống thành công!';
+                statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
+            }, selectedCheckboxes.length * 300);
+        }
+
+        // Tải tất cả các file (Mở liên kết tải trực tiếp)
+        function downloadAllZip() {
+            if (allFilesCache.length === 0) {
+                alert('Kho Drive đang trống!');
+                return;
+            }
+
+            const statusText = document.getElementById('uploadStatus');
+            statusText.innerText = `🚀 Đang mở tải xuống toàn bộ ${allFilesCache.length} file...`;
+            statusText.className = "text-sm font-semibold text-blue-600 mt-2";
+
+            allFilesCache.forEach((file, index) => {
+                const downloadUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }, index * 300);
+            });
+
+            setTimeout(() => {
+                statusText.innerText = '✨ Đã kích hoạt tải xuống tất cả thành công!';
+                statusText.className = "text-sm font-semibold text-emerald-600 mt-2";
+            }, allFilesCache.length * 300);
+        }
+
         loadStorageQuota();
-        loadFiles(currentFolderId);
+        loadFiles();
     </script>
 </body>
 </html>
