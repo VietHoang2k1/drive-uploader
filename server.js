@@ -59,14 +59,14 @@ app.get('/storage-quota', async (req, res) => {
     }
 });
 
-// 2. API lấy danh sách thư mục và file trong một thư mục cụ thể
+// 2. API lấy danh sách thư mục và file trong một thư mục cụ thể (Đã sửa lỗi orderBy)
 app.get('/files', async (req, res) => {
     try {
         const folderId = req.query.folderId || 'root';
         const response = await drive.files.list({
             q: `'${folderId}' in parents and trashed = false`,
             fields: 'files(id, name, mimeType, size)',
-            orderBy: 'folderContentSortDesc,name',
+            orderBy: 'name', // Sắp xếp theo tên chuẩn xác
         });
         res.json(response.data.files);
     } catch (err) {
